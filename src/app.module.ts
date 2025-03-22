@@ -5,11 +5,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ProdutoModule } from './produto/produto.module';
 import { UsuarioModule } from './usuario/usuario.module';
 import { PostgresConfigService } from './config/postgres.config.service';
+import { PedidoModule } from './pedido/pedido.module';
 
 @Module({
   imports: [
     UsuarioModule,
     ProdutoModule,
+    PedidoModule,
     ConfigModule.forRoot({
       isGlobal: true,
     }),
