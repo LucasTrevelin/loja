@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PedidoEntity } from './pedido.entity';
 import { In, Repository } from 'typeorm';
@@ -21,11 +25,36 @@ export class PedidoService {
   ) {}
 
   private async buscaUsuario(id) {
-    const usuario = await this.usuarioRepository.findOneBy({ id: id });
+    const usuario = await this.usuarioRepository.findOneBy({ id });
 
     if (usuario === null) {
       throw new NotFoundException('usuario não foi encontrado');
     }
+
+    return usuario;
+  }
+
+  private trataDadosDoPedido(
+    dadosDoPedido: CriaPedidoDTO,
+    produtosRelacionados: ProdutoEntity[],
+  ) {
+    dadosDoPedido.itensPedido.forEach((itemPedido) => {
+      const produtoRelacionado = produtosRelacionados.find((produto) => {
+        return produto.id === itemPedido.produtoId;
+      });
+
+      if (produtoRelacionado === undefined) {
+        throw new NotFoundException(
+          `o produto id ${itemPedido.produtoId} não foi encontrado.`,
+        );
+      }
+
+      if (itemPedido.quantidade > produtoRelacionado.quantidadeDisponivel) {
+        throw new BadRequestException(
+          `A quantidade solicitada (${itemPedido.quantidade}) é maior do que a disponível (${produtoRelacionado.quantidadeDisponivel}) para o produto ${produtoRelacionado.nome}`,
+        );
+      }
+    });
   }
 
   async cadastraPedido(usuarioId: string, dadosDoPedido: CriaPedidoDTO) {
@@ -44,6 +73,8 @@ export class PedidoService {
     (pedidoEntity.status = StatusPedido.EM_PROCESSAMENTO),
       (pedidoEntity.usuario = usuario);
 
+    this.trataDadosDoPedido(dadosDoPedido, produtosRelacionados);
+
     const itensPedidoEntidades = dadosDoPedido.itensPedido.map((itemPedido) => {
       const itemPedidoEntity = new ItemPedidoEntity();
 
@@ -51,8 +82,8 @@ export class PedidoService {
         return produto.id === itemPedido.produtoId;
       });
 
-      itemPedidoEntity.produto = produtoRelacionado;
-      itemPedidoEntity.precoVenda = produtoRelacionado.valor;
+      itemPedidoEntity.produto = produtoRelacionado!;
+      itemPedidoEntity.precoVenda = produtoRelacionado!.valor;
       itemPedidoEntity.quantidade = itemPedido.quantidade;
       itemPedidoEntity.produto.quantidadeDisponivel -= itemPedido.quantidade;
 
@@ -90,6 +121,10 @@ export class PedidoService {
     const pedidoAtualizado = await this.pedidoRepository.findOneBy({
       id: usuarioId,
     });
+
+    if (pedidoAtualizado === null) {
+      throw new NotFoundException('O pedido não foi encontrado.');
+    }
 
     Object.assign(pedidoAtualizado, dadosDeAtualização);
 
