@@ -16,13 +16,7 @@ export class ProdutoService {
   async criaProduto(dadosProduto: CriaProdutoDTO) {
     const produtoEntity = new ProdutoEntity();
 
-    produtoEntity.nome = dadosProduto.nome;
-    produtoEntity.valor = dadosProduto.valor;
-    produtoEntity.quantidadeDisponivel = dadosProduto.quantidadeDisponivel;
-    produtoEntity.descricao = dadosProduto.descricao;
-    produtoEntity.categoria = dadosProduto.categoria;
-    produtoEntity.caracteristicas = dadosProduto.caracteristicas;
-    produtoEntity.imagens = dadosProduto.imagens;
+    Object.assign(produtoEntity, <ProdutoEntity>dadosProduto);
 
     return this.produtoRepository.save(produtoEntity);
   }
@@ -52,11 +46,14 @@ export class ProdutoService {
     if (entityName === null) {
       throw new NotFoundException('produto não encontrado');
     }
-    Object.assign(entityName, novosDados);
+    Object.assign(entityName, novosDados as ProdutoEntity);
     return this.produtoRepository.save(entityName);
   }
 
   async deletaProduto(id: string) {
-    await this.produtoRepository.delete(id);
+    const resultado = await this.produtoRepository.delete(id);
+
+    if (!resultado.affected)
+      throw new NotFoundException('O produto não foi encontrado.');
   }
 }

@@ -104,14 +104,22 @@ export class PedidoService {
   }
 
   async obtemPedidosDeUsuario(usuarioId: string) {
-    return this.pedidoRepository.find({
+    const usuario = await this.buscaUsuario(usuarioId);
+
+    const pedido = this.pedidoRepository.find({
       where: {
-        usuario: { id: usuarioId },
+        usuario: { id: usuario.id },
       },
       relations: {
         usuario: true,
       },
     });
+
+    if (pedido === null) {
+      throw new NotFoundException('O pedido não foi encontrado.');
+    }
+
+    return pedido;
   }
 
   async atualizaPedido(
@@ -126,7 +134,7 @@ export class PedidoService {
       throw new NotFoundException('O pedido não foi encontrado.');
     }
 
-    Object.assign(pedidoAtualizado, dadosDeAtualização);
+    Object.assign(pedidoAtualizado, dadosDeAtualização as PedidoEntity);
 
     this.pedidoRepository.save(pedidoAtualizado);
 
